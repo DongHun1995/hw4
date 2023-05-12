@@ -22,7 +22,22 @@ static cl_kernel kernel;
 static cl_mem a_d, b_d, c_d;
 
 void matmul(const float *A, const float *B, float *C, int M, int N, int K) {
-  // TODO: FILL_IN_HERE
+  err = clEnqueueWriteBuffer(queue, a_d, CL_FALSE, 0, sizeof(float)*M*K, A, 0, NULL, NULL);
+  err = clEnqueueWriteBuffer(queue, b_d, CL_FALSE, 0, sizeof(float)*K*N, B, 0, NULL, NULL);
+  err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &a_d);
+  err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &b_d);
+  err = clSetKernelArg(kernel, 2, sizeof(cl_mem), &c_d);
+  err = clSetKernelArg(kernel, 3, sizeof(cl_int), &M);
+  err = clSetKernelArg(kernel, 4, sizeof(cl_int), &N);
+  err = clSetKernelArg(kernel, 5, sizeof(cl_int), &K);
+  
+  size_t global_size[2] = {N, M};
+  size_t local_size[2] = {32, 32};
+  global_size[0] = (global_size[0] + local_size[0] - 1) / local_size[0] * local_size[0];
+  global_size[1] = (global_size[1] + local_size[1] - 1) / local_size[1] * local_size[1];
+
+  err = clEnqueueNDRangeKernel(queue, kernel, 2, NULL, global_size, local_size, 0, NULL, NULL);
+  err = clEnqueueReadBuffer(queue, c_d, CL_TRUE, 0, sizeof(float)*M*N, C, 0, NULL, NULL);
 }
 
 static void print_platform_info(cl_platform_id platform) {
@@ -122,4 +137,14 @@ void matmul_initialize(int M, int N, int K) {
   CHECK_ERROR(err);
 }
 
-void matmul_finalize() {}
+void matmul_finalize() 
+{
+  clReleaseMemObject(a_d);
+  clReleaseMemObject(b_d);
+  clReleaseMemObject(c_d);
+  clReleaseKernel(kernel);
+  clReleaseProgram(program);
+  clReleaseCommandQueue(queue);
+  clReleaseContext(context);
+}
+
